@@ -118,6 +118,11 @@ El resultado final luego de ejecutar para 5 clientes es:
 ### Ejercicio N°2:
 Modificar el cliente y el servidor para lograr que realizar cambios en el archivo de configuración no requiera reconstruír las imágenes de Docker para que los mismos sean efectivos. La configuración a través del archivo correspondiente (`config.ini` y `config.yaml`, dependiendo de la aplicación) debe ser inyectada en el container y persistida por fuera de la imagen (hint: `docker volumes`).
 
+#### Resolución del ejercicio
+Se agregaron los volumenes para el servidor y los clientes en el script del `docker-compose-dev.yaml` y se eliminaron las variables de entorno del nivel de logging en ambos casos ya que son parte de la configuración y no deberían estar "hardcodeadas" en el archivo. 
+
+![Cambios en el código](img/ej2_img1.png)
+
 
 ### Ejercicio N°3:
 Crear un script de bash `validar-echo-server.sh` que permita verificar el correcto funcionamiento del servidor utilizando el comando `netcat` para interactuar con el mismo. Dado que el servidor es un echo server, se debe enviar un mensaje al servidor y esperar recibir el mismo mensaje enviado.
