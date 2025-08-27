@@ -93,6 +93,28 @@ python3 mi-generador.py $1 $2
 
 En el archivo de Docker Compose de salida se pueden definir volúmenes, variables de entorno y redes con libertad, pero recordar actualizar este script cuando se modifiquen tales definiciones en los sucesivos ejercicios.
 
+#### Resolución del ejercicio
+Se generó un script directamente en bash. Este script primero hace un chequeo de la cantidad de variables recibidas, en caso de que no sea 2 devuelve un código de error 1. Luego hace un chequeo para ver si la cantidad de clientes ingresados es un número entero mayor a 0, en caso de que no lo sea devuelve código de error 2.
+
+![Código de error](img/ej1_img1.png)
+
+Una vez hecho el chequeo de erorres, se comienza a reescribir el archivo de salida, cuyo path esta guardado en la variable `$OUTPUT_FILE`. Con el comando `cat > "$OUTPUT_FILE` se redirige la salida estándar al archivo de salida, reescribiendo su contenido. `<< 'END'` inicia un `here-doc`, que indica que se escriba todo lo que se encuentra a continuación hasta que se encuentre una línea que contenga únicamente el delimitador `END`. 
+
+![Escribir el server](img/ej1_img2.png)
+
+Una vez escrito el server, se pasan a escribir los clientes. El script realiza un for desde 1 hasta la cantidad de clientes. En cada iteración se escribe un cliente. En este caso se utiliza `cat >> "$OUTPUT_FILE` ya que `>>` indica que se agregue al archivo en vez de sobreescribir.
+
+![Escribir clientes](img/ej1_img3.png)
+
+Por último se vuelve a escribir la red sin modificaciones a la original. 
+
+![Escribir network](img/ej1_img4.png)
+
+El resultado final luego de ejecutar para 5 clientes es:
+
+![Resultado final](img/ej1_img5.png)
+
+
 ### Ejercicio N°2:
 Modificar el cliente y el servidor para lograr que realizar cambios en el archivo de configuración no requiera reconstruír las imágenes de Docker para que los mismos sean efectivos. La configuración a través del archivo correspondiente (`config.ini` y `config.yaml`, dependiendo de la aplicación) debe ser inyectada en el container y persistida por fuera de la imagen (hint: `docker volumes`).
 
