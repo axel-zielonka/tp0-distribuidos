@@ -7,14 +7,16 @@ COMPOSE_FILE="${COMPOSE_FILE:-docker-compose-dev.yaml}"
 PROJECT_NAME="$(awk '/^[[:space:]]*name:[[:space:]]*/{print $2; exit}' "$COMPOSE_FILE" 2>/dev/null || echo tp0)"
 NETWORK="${PROJECT_NAME}_testing_net"
 
-# Busca en el listado de contenedores en ejecución uno que se llame exactamente 'server', en caso de no encontrarlo sale y no intenta de vuelta
+# Busca en el listado de contenedores en ejecución uno que se llame exactamente 'server'
+# en caso de no encontrarlo sale y no intenta de vuelta
 if ! docker ps --format '{{.Names}}' | grep -qx 'server'; then
   echo "action: test_echo_server | result: fail"
   exit 1
 fi
 
 # Ejecuta python dentro de server e intenta leer el archivo config.ini para buscar el puerto.
-# Si existe SERVER_PORT en el entorno lo toma, si no toma DEFAULT.SERVER_PORT de config.ini y si tampoco existe toma 12345 por defecto
+# Si existe SERVER_PORT en el entorno lo toma, si no toma DEFAULT.SERVER_PORT de config.ini y 
+# si tampoco existe toma 12345 por defecto
 PORT_OUT="$(docker exec server python3 - <<'PY' 2>/dev/null || true
 import os
 from configparser import ConfigParser

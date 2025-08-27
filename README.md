@@ -131,6 +131,26 @@ En caso de que la validación sea exitosa imprimir: `action: test_echo_server | 
 
 El script deberá ubicarse en la raíz del proyecto. Netcat no debe ser instalado en la máquina _host_ y no se pueden exponer puertos del servidor para realizar la comunicación (hint: `docker network`). `
 
+#### Resolución del ejercicio
+El script `validar-echo-server.sh` busca en el archivo `docker-compose-dev.yaml` el nombre del proyecto. El comando `"$(awk '/^[[:space:]]*name:[[:space:]]*/{print $2; exit}' "$COMPOSE_FILE" 2>/dev/null || echo tp0)"` busca en el compose la primera aparición de `name` y asigna su valor a la variable `PROJECT_NAME`. Cabe aclarar que en caso de no encontrar el nombre, se elige por defecto `tp0` ya que era el nombre original. Luego de asignar el nombre del proyecto, asigna el nombre de la red en la variable `NETWORK`
+
+![Búsqueda de nombre y asignación de la red](img/ej3_img1.png)
+
+Una vez hecho esto, se busca entre los containers en ejecución al `server`, ya que este es el que maneja la conexión y es a donde se va a enviar el mensaje. En caso de no encontrarlo, el script devuelve `fail` automáticamente sin posibilidad de reconexión.
+
+![Buscar 'server' en los containers](img/ej3_img2.png)
+
+Si se encontró el container del servidor, se procede a encontrar el puerto por donde enviar la información. Para que no sea un valor hardcodeado, se ejecuta dentro de docker una terminal de python y se lee el archivo `config.ini` del servidor para obtener el puerto. Si no se encontrara un puerto, se asigna el puerto default del archivo, y en caso de que tampoco haya uno se asigna por defecto el puerto `12345`. Aclaración, se usa el puerto `12345` como default ya que en el archivo original del `config.ini` ese era el valor. 
+
+Luego se hace una validación para ver si el puerto leído tiene un valor correcto, es decir, que sea un número.
+
+![Búsqueda y validación del puerto](img/ej3_img3.png)
+
+Una vez obtenido el puerto, se levanta un contenedor temporal de docker con `docker run -rm` y se conecta a `NETWORK` usando alpine, que ejecuta una shell. Envia por `stdin` a `netcat` conectado con `server` en el puerto `PORT` el mensaje inicial sin el salto de línea. 
+
+Por último, chequea que el mensaje original sea igual al mensaje recibido devolviendo según corresponda. 
+
+![Conexión y resultado](img/ej3_img4.png)
 
 ### Ejercicio N°4:
 Modificar servidor y cliente para que ambos sistemas terminen de forma _graceful_ al recibir la signal SIGTERM. Terminar la aplicación de forma _graceful_ implica que todos los _file descriptors_ (entre los que se encuentran archivos, sockets, threads y procesos) deben cerrarse correctamente antes que el thread de la aplicación principal muera. Loguear mensajes en el cierre de cada recurso (hint: Verificar que hace el flag `-t` utilizado en el comando `docker compose down`).
