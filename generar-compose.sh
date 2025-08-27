@@ -9,11 +9,6 @@ fi
 OUTPUT_FILE="$1"
 NUM_CLIENTS="$2"
 
-if ! [[ "$NUM_CLIENTS" =~ ^[0-9]+$ ]] || [[ "$NUM_CLIENTS" -lt 1 ]]; then
-  echo "Error:  debe ser un entero >= 1"
-  exit 2
-fi
-
 cat > "$OUTPUT_FILE" <<'END'
 name: tp0
 services:
