@@ -2,6 +2,7 @@ package common
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"net"
 	"time"
@@ -50,12 +51,33 @@ func (c *Client) createClientSocket() error {
 	return nil
 }
 
+// closeConnection Close connection with logging
+func (c *Client) closeConnection() {
+	if c.conn != nil {
+		c.conn.Close()
+		log.Infof("action: close_connection | result: success | client_id: %v", c.config.ID)
+		c.conn = nil
+	}
+}
+
 // StartClientLoop Send messages to the client until some time threshold is met
-func (c *Client) StartClientLoop() {
+func (c *Client) StartClientLoop(ctx context.Context) {
 	// There is an autoincremental msgID to identify every message sent
 	// Messages if the message amount threshold has not been surpassed
 	for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
-		// Create the connection the server in every loop iteration. Send an
+		// Check if shutdown was requested
+		select {
+		case <-ctx.Done():
+			log.Infof("action: shutdown | result: success | client_id: %v | message_id: %v", c.config.ID, msgID)
+			if c.conn != nil {
+				c.closeConnection()
+			}
+			return
+		default:
+			// continue
+		}
+
+		// Create the connection to the server in every loop iteration. Send an
 		c.createClientSocket()
 
 		// TODO: Modify the send to avoid short-write
@@ -66,7 +88,7 @@ func (c *Client) StartClientLoop() {
 			msgID,
 		)
 		msg, err := bufio.NewReader(c.conn).ReadString('\n')
-		c.conn.Close()
+		c.closeConnection()
 
 		if err != nil {
 			log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
@@ -82,8 +104,14 @@ func (c *Client) StartClientLoop() {
 		)
 
 		// Wait a time between sending one message and the next one
-		time.Sleep(c.config.LoopPeriod)
-
+		// This sleep is now interruptible by shutdown signal
+		select {
+		case <-ctx.Done():
+			log.Infof("action: shutdown | result: success | client_id: %v", c.config.ID)
+			return
+		case <-time.After(c.config.LoopPeriod):
+			// Continue to next iteration
+		}
 	}
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 }

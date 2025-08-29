@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/op/go-logging"
@@ -103,6 +106,17 @@ func main() {
 	// Print program config with debugging purposes
 	PrintConfig(v)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGTERM)
+	
+	go func() {
+		sig := <-sigChan
+		log.Infof("action: shutdown_signal | result: in_progress | signal: %v | client_id: %s", sig, v.GetString("id"))
+		cancel()
+	}()
+
 	clientConfig := common.ClientConfig{
 		ServerAddress: v.GetString("server.address"),
 		ID:            v.GetString("id"),
@@ -111,5 +125,5 @@ func main() {
 	}
 
 	client := common.NewClient(clientConfig)
-	client.StartClientLoop()
+	client.StartClientLoop(ctx)
 }
