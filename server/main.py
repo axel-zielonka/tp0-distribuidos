@@ -60,7 +60,6 @@ def main():
     server = Server(port, listen_backlog)
 
     signal.signal(signal.SIGTERM, lambda signum, frame: signal_handler(signum, frame, server))
-    #signal.signal(signal.SIGINT, lambda signum, frame: signal_handler(signum, frame, server))
     try:
         server.run()
     except Exception as e:
