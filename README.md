@@ -155,6 +155,49 @@ Por último, chequea que el mensaje original sea igual al mensaje recibido devol
 ### Ejercicio N°4:
 Modificar servidor y cliente para que ambos sistemas terminen de forma _graceful_ al recibir la signal SIGTERM. Terminar la aplicación de forma _graceful_ implica que todos los _file descriptors_ (entre los que se encuentran archivos, sockets, threads y procesos) deben cerrarse correctamente antes que el thread de la aplicación principal muera. Loguear mensajes en el cierre de cada recurso (hint: Verificar que hace el flag `-t` utilizado en el comando `docker compose down`).
 
+#### Resolución del ejercicio
+Resolución en `client`:
+En `client/common/client.go` se implementaron las siguientes funciones:
+* `closeConnection()`: realiza el cierre del socket, liberando el file descriptor y terminando la comunicación con el server. Esta función fue creada para no estar usando `c.conn.Close()` y mejorar la legibilidad del código
+![Función closeConnection](img/ej4_img1.png)
+
+* En `StartClientLoop()` se modificaron algunas cosas. Primero, ahora la función recibe por parámetro un `context.Context` para poder manejar el shutdown. Además en el loop, se chequea si la conexión fue terminada con `ctx.Done()`, y en el caso afirmativo cierra la conexión y termina el loop. 
+* Se modificó el sleep entre mensajes, ya que `time.Sleep` bloquea la goroutine y no puede interrumpirse hasta que no pase el tiempo. Se agregó una condición de `select` para que si se interrumpió con un `SIGTERM` durante ese momento no haya que esperar a que termine el sleep para qeu termine la conexión. El sleep ahora se maneja con un `time.After` que sí puede ser interrumpido por una señal de shutdown
+
+![StartClientLoop](img/ej4_img2.png)
+![StartClientLoop2](img/ej4_img3.png)
+
+En `client/main.go`:
+* Se crea un `context` para poder mandar información entre goroutines, junto con su función `cancel`.
+* Se crea un canal buffereado `sigChan` que recibe señales del sistema operativo. Como en este caso solamente se pide que se maneje la señal `SIGTERM` el tamaño del buffer es de 1. El canal queda a la espera de señales.
+* Se lanza una gorotutine para manejar las señales, con una variable `sig` que se bloquea hasta recibir algo desde `sigChan`. Una vez que recibe, se loguea el shutdown y se llama a la función `cancel()` del `context`
+
+![main.go](img/ej4_img4.png)
+
+Resolución en `server`:
+En `server/common/server.py`:
+* Se implementó un flag `_running` que indica si el server está activo
+
+![Flag running](img/ej4_img5.png)
+
+* En `run()` se modificó el loop de iteraciones. Antes era un `while True` y ahora pasa a ser un `while self._running`, que hace que al momento en el que el flag deja de ser `True`, el loop se corte (terminando la iteración actual). La aceptación de nuevas conexiones y el manejo de las conexiones de los clientes está dentro de un bloque `try` ya que si sucede un error quiero poder manejarlo correctamente y que no se corte el programa. Una vez que termina el `while`, se hace un cierre del socket del servidor llamando a la función `__close_server_socket()`.
+
+![Run](img/ej4_img6.png)
+
+* Se implementó `shutdown()`, que cambia el valor del flag a `False` y hace un `socket.shutdown(RDWR)`
+* Se implementó `__close_server_socket()` que hace un `socket.close()` y libera los recursos.
+
+![Shutdown y close](img/ej4_img7.png)
+
+En `server/main.py`:
+* Se implementó `signal_handler()` que recibe el número de señal, el frame (estado actual de la pila de ejecución) y el `server`. Cabe aclarar que si bien `frame` no se utiliza en la función, es necesario que esté en la firma de la función para el handling de señales en python. En esta función se hace el log del shutdown y se llama a `server.shutdown()`. 
+
+![Signal Handler](img/ej4_img8.png)
+
+* En `main()` se hace el llamado a `signal_handler()` a través de `signal.signal(signal.SIGTERM, lambda signum, frame: signal_handler(signum, frame, server))`. Se usa `lambda` porque `signal.signal` originalmente recibe 2 parámetros, y `lambda` me permite hacer el llamado a `signal_handler()`. Por último, se modificó la línea dónde estaba `server.run()` y ahora está dentro de un bloque `try`, ya que en caso de que falle se debería llamar a `server.shutdown()` y salir con código de error.
+
+![Main](img/ej4_img9.png)
+
 ## Parte 2: Repaso de Comunicaciones
 
 Las secciones de repaso del trabajo práctico plantean un caso de uso denominado **Lotería Nacional**. Para la resolución de las mismas deberá utilizarse como base el código fuente provisto en la primera parte, con las modificaciones agregadas en el ejercicio 4.
