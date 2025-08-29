@@ -4,6 +4,15 @@ from configparser import ConfigParser
 from common.server import Server
 import logging
 import os
+import signal 
+import sys
+
+def signal_handler(signum, frame, server):
+    """Graceful shutdown handler"""
+    logging.info(f"action: shutdown signal | result: in_progress | signal: {signum}")
+    server.shutdown()
+    logging.info("action: server_shutdown | result: success")
+    sys.exit(0)
 
 
 def initialize_config():
@@ -49,7 +58,15 @@ def main():
 
     # Initialize server and start server loop
     server = Server(port, listen_backlog)
-    server.run()
+
+    signal.signal(signal.SIGTERM, lambda signum, frame: signal_handler(signum, frame, server))
+    #signal.signal(signal.SIGINT, lambda signum, frame: signal_handler(signum, frame, server))
+    try:
+        server.run()
+    except Exception as e:
+        server.shutdown()
+        sys.exit(1)
+
 
 def initialize_log(logging_level):
     """
