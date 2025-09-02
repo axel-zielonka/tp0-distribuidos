@@ -12,6 +12,15 @@ import (
 
 var log = logging.MustGetLogger("log")
 
+type BetInfo struct {
+	Agency 		string
+	Name 		string
+	Surname 	string
+	Document 	string
+	Birthdate 	string
+	Number 		string
+}
+
 // ClientConfig Configuration used by the client
 type ClientConfig struct {
 	ID            string
@@ -24,6 +33,7 @@ type ClientConfig struct {
 type Client struct {
 	config ClientConfig
 	conn   net.Conn
+	betInfo BetInfo
 }
 
 // NewClient Initializes a new client receiving the configuration
@@ -32,7 +42,34 @@ func NewClient(config ClientConfig) *Client {
 	client := &Client{
 		config: config,
 	}
+	
+	if err := client.loadBetDataFromEnv(); err != nil {
+		log.Criticalf("action: load_bet_data | result: fail | client_id: %v | error: %v", config.ID, err)
+	}
+
 	return client
+}
+
+// loadBetDataFromEnv reads environment variables and creates BetInfo struct
+func (c* Client) loadBetDataFromEnv() error {
+	c.betInfo.Agency = c.config.ID
+	c.betInfo.Name = os.Getenv("NAME")
+	c.betInfo.Surname = os.Getenv("SURNAME")
+	c.betInfo.Document = os.Getenv("DOCUMENT")
+	c.betInfo.Birthdate = os.Getenv("BIRTHDATE")
+
+	numberStr := os.Getenv("NUMBER")
+	if numberStr == "" {
+		return fmt.Errorf("NUMBER environment variable is required")
+	}
+	
+	c.betInfo.Number = numberStr
+
+	if c.betInfo.Name == "" || c.betInfo.Surname == "" || c.betInfo.Document == "" || c.betInfo.Birthdate == "" {
+		return fmt.Errorf("All bet data fields are required")
+	}
+
+	return nil
 }
 
 // CreateClientSocket Initializes client socket. In case of
