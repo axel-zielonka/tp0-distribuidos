@@ -5,6 +5,7 @@ class Protocol:
     def __init__(self, sock):
         self._sock = sock
 
+    # handles meesage receiving through the socket, avoiding short-reads
     def receive_message(self) -> str:
         message = b""
         while True:
@@ -16,6 +17,7 @@ class Protocol:
                 break
         return message.decode("utf-8").strip()
 
+    # receives a string message and sends it through the socket, avoiding short writes
     def send_message(self, message: str):
         data = message.encode("utf-8")
         total_sent = 0
