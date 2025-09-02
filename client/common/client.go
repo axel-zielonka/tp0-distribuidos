@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"time"
+	"string"
 
 	"github.com/op/go-logging"
 )
