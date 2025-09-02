@@ -105,7 +105,7 @@ func (c* Client) createBetMessage() string {
 // sendBet creates the bet message and sends it through the socket. 
 // it also waits for server ack to ensure correct communication flow
 func (c* Client) sendBet() error {
-	betMessage := c.createBetMessaege()
+	betMessage := c.createBetMessage()
 
 	if err := c.sendMessage(betMessage); err != nil {
 		return fmt.Errorf("failed to send bet: %v", err)

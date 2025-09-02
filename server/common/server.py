@@ -1,5 +1,6 @@
 import socket
 import logging
+from .utils import Bet, store_bets
 
 
 class Server:
@@ -26,6 +27,7 @@ class Server:
                     self.__handle_client_connection(client_sock)
                 except Exception as e:
                     if self._running:
+                        logging.error(f"action: handle_connection | result: fail | error: {e}")
                         continue  # Ignore unless shutdown is requested
                     else:
                         break
@@ -56,16 +58,63 @@ class Server:
         client socket will also be closed
         """
         try:
-            # TODO: Modify the receive to avoid short-reads
-            msg = client_sock.recv(1024).rstrip().decode('utf-8')
+            message = self.__receive_message(client_sock)
             addr = client_sock.getpeername()
-            logging.info(f'action: receive_message | result: success | ip: {addr[0]} | msg: {msg}')
-            # TODO: Modify the send to avoid short-writes
-            client_sock.send("{}\n".format(msg).encode('utf-8'))
-        except OSError as e:
-            logging.error("action: receive_message | result: fail | error: {e}")
+
+            logging.debug(f"action: receive_message | result: success | ip: {addr[0]} | msg: {message}")
+
+            response = self.__process_bet_message(message)
+
+            self.__send_message(client_sock, response)
+        except Exception as e:
+            logging.error(f"action: handle_client | result: fail | error: {e}")
+            try:
+                error_response = "RESPONSE/ERROR/Error procesando apuesta\n"
+                self.__send_message(client_sock, error_response)
+            except:
+                pass
         finally:
             client_sock.close()
+
+    def __receive_message(self, client_sock):
+        message = b""
+        while True:
+            chunk = client_sock.recv(1024)
+            if not chunk:
+                break
+            message += chunk
+            if b'\n' in message:
+                break
+        return message.decode('utf-8').strip()
+    
+    def __send_message(self, client_sock, message):
+        data = message.encode('utf-8')
+        total_sent = 0
+
+        while total_sent < len(data):
+            sent = client_sock.send(data[total_sent:])
+            if sent == 0:
+                raise RuntimeError("Socket connection broken")
+            total_sent += sent
+    
+    def __process_bet_message(self, message):
+        try:
+            parts = message.split('/')
+            if len(parts) != 7 or parts[0] != 'BET':
+                return "RESPONSE/ERROR/Formato de mensaje invalido\n"
+    
+            _, agency, name, surname, document, birthdate, number = parts
+            
+            bet = Bet(agency, name, surname, document, birthdate, number)
+
+            store_bets([bet])
+
+            logging.info(f"action: apuesta_almacenada | result: success | dni: {document} | numero: {number}")
+            return "RESPONSE/SUCCESS/Apuesta registrada correctamente\n"
+        except Exception as e:
+            logging.error(f"action: process_bet | result: fail | error: {e}")
+            return "RESPONSE/ERROR/Error\n"
+
 
     def __accept_new_connection(self):
         """

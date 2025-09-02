@@ -6,22 +6,27 @@ services:
     entrypoint: python3 /main.py
     environment:
       - PYTHONUNBUFFERED=1
-      - LOGGING_LEVEL=DEBUG
+    volumes:
+      - ./server/config.ini:/config.ini:ro
     networks:
       - testing_net
-
   client1:
     container_name: client1
     image: client:latest
     entrypoint: /client
     environment:
       - CLI_ID=1
-      - CLI_LOG_LEVEL=DEBUG
+      - NAME=name1
+      - SURNAME=surname1
+      - DOCUMENT=40000001
+      - BIRTHDATE=2003-08-25
+      - NUMBER=1001
+    volumes:
+      - ./client/config.yaml:/config.yaml:ro
     networks:
       - testing_net
     depends_on:
       - server
-
 networks:
   testing_net:
     ipam:
