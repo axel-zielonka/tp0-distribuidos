@@ -7,14 +7,14 @@ class Protocol:
 
     # handles meesage receiving through the socket, avoiding short-reads
     def receive_message(self) -> str:
+        msgSize = int.from_bytes(self._sock.recv(2), byteorder='big')        
+        
         message = b""
-        while True:
-            chunk = self._sock.recv(1024)
+        while len(message) < msgSize:
+            chunk = self._sock.recv(msgSize - len(message))
             if not chunk:
-                break
+                raise ConnectionError("Socket connection closed")
             message += chunk
-            if b"\n" in message:
-                break
         return message.decode("utf-8").strip()
 
     # receives a string message and sends it through the socket, avoiding short writes

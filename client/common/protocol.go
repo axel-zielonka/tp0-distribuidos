@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"encoding/binary"
 
 	"github.com/op/go-logging"
 )
@@ -52,23 +53,42 @@ func (cp *ClientProtocol) createBetMessage(bet BetInfo) string {
 			bet.Number)
 }
 
+func (cp* ClientProtocol) sendAll(conn net.Conn, buffer []byte) error {
+	totalSent := 0
+	for totalSent < len(buffer) {
+		sent, err := cp.conn.Write(buffer[totalSent:])
+		if err != nil {
+			return err
+		}
+		totalSent += sent
+	}
+	return nil
+}
+
 // sendMessage sends a string through the socket, it continues sending until the complete
 // message is transmitted, avoiding short-writes
 func (cp *ClientProtocol) sendMessage(message string) error {
 	if cp.conn == nil {
 		return fmt.Errorf("socket closed")
 	}
-	data := []byte(message)
-	totalSent := 0
 
-	for totalSent < len(data) {
-		sent, err := cp.conn.Write(data[totalSent:])
-		if err != nil {
-			return err
-		}
-		totalSent += sent
+	msgLen := len(message)
+	msgSize := uint16(msgLen)
+	sizeBuff := make([]byte, 2)
+	binary.BigEndian.PutUint16(sizeBuff, msgSize)
+
+	if err := cp.sendAll(cp.conn, sizeBuff); err != nil {
+		log.Errorf("action: send_message | result: fail | error: %v")
+		return err
 	}
 
+	msgData := []byte(message)
+
+	if err := cp.sendAll(cp.conn, msgData); err != nil {
+		log.Errorf("action: send_message | result: fail | error: %v")
+		return err
+	}
+	
 	return nil
 }
 
