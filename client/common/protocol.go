@@ -53,6 +53,7 @@ func (cp *ClientProtocol) createBetMessage(bet BetInfo) string {
 			bet.Number)
 }
 
+// sendAll receives a byte array and loops until every byte is sent, avoiding short-writes
 func (cp* ClientProtocol) sendAll(conn net.Conn, buffer []byte) error {
 	totalSent := 0
 	for totalSent < len(buffer) {
@@ -65,8 +66,7 @@ func (cp* ClientProtocol) sendAll(conn net.Conn, buffer []byte) error {
 	return nil
 }
 
-// sendMessage sends a string through the socket, it continues sending until the complete
-// message is transmitted, avoiding short-writes
+// sendMessage sends a string through the socket
 func (cp *ClientProtocol) sendMessage(message string) error {
 	if cp.conn == nil {
 		return fmt.Errorf("socket closed")
