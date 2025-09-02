@@ -8,6 +8,7 @@ import (
 	"time"
 	"strings"
 	"os"
+	// "io"
 
 	"github.com/op/go-logging"
 )
@@ -141,15 +142,23 @@ func (c* Client) sendMessage(message string) error {
 }
 
 // receiveMessage receives server answer
-// TODO: handle short-reads
+// handles short-reads
 func (c* Client) receiveMessage() (string, error) {
 	reader := bufio.NewReader(c.conn)
-	message, err := reader.ReadString('\n')
-	if err != nil {
-		return "", err
-	}
+	var message []byte
 
-	return strings.TrimSpace(message), nil
+	for {
+		b, err := reader.ReadByte()
+		if err != nil {
+			return "", err
+		}
+
+		if b == '\n' {
+			return strings.TrimSpace(string(message)), nil
+		}
+
+		message = append(message, b)
+	}
 }
 
 // parseResponseFromServer receives the message from the server and verifies its contents
