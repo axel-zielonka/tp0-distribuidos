@@ -41,7 +41,7 @@ func (cp *ClientProtocol) SendBet(bet BetInfo) (*ServerResponse, error) {
 }
 
 // createBetMessage serializes BetInfo struct in Client
-// Messages are styled: "TYPE/data_1/.../data_n\n"
+// Messages are styled: "BET/<name>/<surname>/<document>/<birthdate>/<number>\n"
 func (cp *ClientProtocol) createBetMessage(bet BetInfo) string {
 	return fmt.Sprintf("BET/%s/%s/%s/%s/%s/%s\n",
 			bet.Agency,
