@@ -185,57 +185,32 @@ func (c *Client) closeConnection() {
 }
 
 // StartClientLoop Send messages to the client until some time threshold is met
-func (c *Client) StartClientLoop(ctx context.Context) {
-	// There is an autoincremental msgID to identify every message sent
-	// Messages if the message amount threshold has not been surpassed
-	for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
-		// Check if shutdown was requested
-		select {
-		case <-ctx.Done():
-			log.Infof("action: shutdown | result: success | client_id: %v | message_id: %v", c.config.ID, msgID)
-			if c.conn != nil {
-				c.closeConnection()
-			}
-			return
-		default:
-			// continue
-		}
-
-		// Create the connection to the server in every loop iteration. Send an
-		c.createClientSocket()
-
-		// TODO: Modify the send to avoid short-write
-		fmt.Fprintf(
-			c.conn,
-			"[CLIENT %v] Message N°%v\n",
-			c.config.ID,
-			msgID,
-		)
-		msg, err := bufio.NewReader(c.conn).ReadString('\n')
-		c.closeConnection()
-
-		if err != nil {
-			log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
-				c.config.ID,
-				err,
-			)
-			return
-		}
-
-		log.Infof("action: receive_message | result: success | client_id: %v | msg: %v",
-			c.config.ID,
-			msg,
-		)
-
-		// Wait a time between sending one message and the next one
-		// This sleep is now interruptible by shutdown signal
+	func (c *Client) StartClientLoop(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			log.Infof("action: shutdown | result: success | client_id: %v", c.config.ID)
-			return
-		case <-time.After(c.config.LoopPeriod):
-			// Continue to next iteration
+				if c.conn != nil {
+					c.closeConnection()
+				}
+				return
+		default:
 		}
-	}
+
+		c.createClientSocket()
+
+		if err := c.sendBet(); err != nil {
+			log.Errorf("action: send_bet | result: fail | client_id: %v | error: %v", c.config.ID, err)
+			return
+		}
+
+		c.closeConnection();
+
+		select {
+		case <-ctx.Done():
+				log.Infof("action: shutdown | result: succes | client_id: %v", c.config.ID)
+				return
+		case <-time.After(c.config.LoopPeriod):
+
+		}
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 }
