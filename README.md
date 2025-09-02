@@ -223,6 +223,16 @@ Se deberá implementar un módulo de comunicación entre el cliente y el servido
 * Correcta separación de responsabilidades entre modelo de dominio y capa de comunicación.
 * Correcto empleo de sockets, incluyendo manejo de errores y evitando los fenómenos conocidos como [_short read y short write_](https://cs61.seas.harvard.edu/site/2018/FileDescriptors/).
 
+_Protocolo de comunicacion:_ se planteo un protocolo similar tanto para el cliente como para el servidor.
+
+
+En el cliente, las apuestas se serializan de la siguiente forma `"BET/<Agencia>/<Nombre>/<Apellido>/<Documento>/<Fecha_de_nacimiento>/<Numero>\n"`. El caracter `\n` delimita el fin del mensaje y es lo que busca el servidor para cortar las lecturas.
+* El envio de mensajes se encuentra en el metodo `sendMessage()`. En este, se crea un buffer de bytes con el texto que se quiere enviar junto con un contador de bytes enviados. Luego, se entra en un loop en el que se van enviando bytes y actualizando el valor del contador. El loop puede terminar antes de tiempo por un error o puede finalizar correctamente cuando todos los bytes hayan sido enviados, evitando `short writes`
+* La recepcion de los mensajes hace algo similar al envio, en la funcion `receiveMessage()` solamente que lee de a 1 byte a la vez. Esto se debe a que en el envio, el protocolo conoce la longitud del mensaje que va a enviar, pero en la recepcion no. Es por esto que hace una lectura de a 1 byte hasta recibir el caracter `\n` que indica el fin del mensaje, evitando de esta forma `short reads`
+
+
+Por el otro lado, en el servidor, los mensajes de respuesta se serializan de la siguiente forma `"RESPONSE/<success>/<message>\n"` donde `<success>` puede tomar valor `SUCCESS` o `ERROR` dependiendo de si el mensaje recibido era valido.
+* El envio de mensajes se encuentra en el metodo `send_message()` y se comporta de forma muy similar al del envio del cliente. Se crea un array de bytes y se tiene un contador con los bytes enviados, para luego en loop enviar y actualizar el contador hasta que se termina correctamente y se envia todo u ocurre un error y se termina la comunicacion.
 
 ### Ejercicio N°6:
 Modificar los clientes para que envíen varias apuestas a la vez (modalidad conocida como procesamiento por _chunks_ o _batchs_). 

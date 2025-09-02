@@ -1,11 +1,6 @@
 import logging
-import socket
 
 class Protocol:
-    """
-    Encapsula la lógica de comunicación (recepción y envío de mensajes).
-    El Server no manipula sockets directamente.
-    """
 
     def __init__(self, sock):
         self._sock = sock
