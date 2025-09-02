@@ -227,12 +227,24 @@ _Protocolo de comunicacion:_ se planteo un protocolo similar tanto para el clien
 
 
 En el cliente, las apuestas se serializan de la siguiente forma `"BET/<Agencia>/<Nombre>/<Apellido>/<Documento>/<Fecha_de_nacimiento>/<Numero>\n"`. El caracter `\n` delimita el fin del mensaje y es lo que busca el servidor para cortar las lecturas.
-* El envio de mensajes se encuentra en el metodo `sendMessage()`. En este, se crea un buffer de bytes con el texto que se quiere enviar junto con un contador de bytes enviados. Luego, se entra en un loop en el que se van enviando bytes y actualizando el valor del contador. El loop puede terminar antes de tiempo por un error o puede finalizar correctamente cuando todos los bytes hayan sido enviados, evitando `short writes`
+* El envio de mensajes se encuentra en el metodo `sendMessage()`. En este, se crea un buffer de bytes con el texto que se quiere enviar junto con un contador de bytes enviados. Primero se envia por el socket el largo del mensaje, en 2 bytes en formato `big endian`. Luego, se entra en un loop en el que se van enviando bytes y actualizando el valor del contador. El loop puede terminar antes de tiempo por un error o puede finalizar correctamente cuando todos los bytes hayan sido enviados, evitando `short writes`
+
+![Send](img/ej5_img1.png)
+
+![Send](img/ej5_img2.png)
+
 * La recepcion de los mensajes hace algo similar al envio, en la funcion `receiveMessage()` solamente que lee de a 1 byte a la vez. Esto se debe a que en el envio, el protocolo conoce la longitud del mensaje que va a enviar, pero en la recepcion no. Es por esto que hace una lectura de a 1 byte hasta recibir el caracter `\n` que indica el fin del mensaje, evitando de esta forma `short reads`
 
+![Receive](img/ej5_img3.png)
 
 Por el otro lado, en el servidor, los mensajes de respuesta se serializan de la siguiente forma `"RESPONSE/<success>/<message>\n"` donde `<success>` puede tomar valor `SUCCESS` o `ERROR` dependiendo de si el mensaje recibido era valido.
-* El envio de mensajes se encuentra en el metodo `send_message()` y se comporta de forma muy similar al del envio del cliente. Se crea un array de bytes y se tiene un contador con los bytes enviados, para luego en loop enviar y actualizar el contador hasta que se termina correctamente y se envia todo u ocurre un error y se termina la comunicacion.
+* El envio de mensajes se encuentra en el metodo `send_message()` y se comporta de forma muy similar al del envio del cliente. La diferencia es que no se envía el tamaño del mensaje ya que el cliente separa los mensajes por el `\n`, y como los mensajes que envía el servidor no tienen saltos de línea intermedios se puede asegurar que habra un único `\n` por mensaje, por lo que no es necesario enviar el tamaño. Se crea un array de bytes y se tiene un contador con los bytes enviados, para luego en loop enviar y actualizar el contador hasta que se termina correctamente y se envia todo u ocurre un error y se termina la comunicacion.
+
+![Send](img/ej5_img4.png)
+
+* La recepción de mensajes se encuentra en el método `receive_message()`. Primero lee del socket 2 bytes en formato `big endian` que indican el tamaño del mensaje que se va a recibir. Luego de esto, entra en un loop en el que intenta leer la cantidad de bytes que le faltan para llegar a ese tamaño que se leyó, evitando así `short-reads`
+
+![Receive](img/ej5_img5.png)
 
 ### Ejercicio N°6:
 Modificar los clientes para que envíen varias apuestas a la vez (modalidad conocida como procesamiento por _chunks_ o _batchs_). 

@@ -78,6 +78,108 @@ services:
       - testing_net
     depends_on:
       - server
+  client5:
+    container_name: client5
+    image: client:latest
+    entrypoint: /client
+    environment:
+      - CLI_ID=5
+      - NAME=name5
+      - SURNAME=surname5
+      - DOCUMENT=40000005
+      - BIRTHDATE=2003-08-25
+      - NUMBER=1005
+    volumes:
+      - ./client/config.yaml:/config.yaml:ro
+    networks:
+      - testing_net
+    depends_on:
+      - server
+  client6:
+    container_name: client6
+    image: client:latest
+    entrypoint: /client
+    environment:
+      - CLI_ID=6
+      - NAME=name6
+      - SURNAME=surname6
+      - DOCUMENT=40000006
+      - BIRTHDATE=2003-08-25
+      - NUMBER=1006
+    volumes:
+      - ./client/config.yaml:/config.yaml:ro
+    networks:
+      - testing_net
+    depends_on:
+      - server
+  client7:
+    container_name: client7
+    image: client:latest
+    entrypoint: /client
+    environment:
+      - CLI_ID=7
+      - NAME=name7
+      - SURNAME=surname7
+      - DOCUMENT=40000007
+      - BIRTHDATE=2003-08-25
+      - NUMBER=1007
+    volumes:
+      - ./client/config.yaml:/config.yaml:ro
+    networks:
+      - testing_net
+    depends_on:
+      - server
+  client8:
+    container_name: client8
+    image: client:latest
+    entrypoint: /client
+    environment:
+      - CLI_ID=8
+      - NAME=name8
+      - SURNAME=surname8
+      - DOCUMENT=40000008
+      - BIRTHDATE=2003-08-25
+      - NUMBER=1008
+    volumes:
+      - ./client/config.yaml:/config.yaml:ro
+    networks:
+      - testing_net
+    depends_on:
+      - server
+  client9:
+    container_name: client9
+    image: client:latest
+    entrypoint: /client
+    environment:
+      - CLI_ID=9
+      - NAME=name9
+      - SURNAME=surname9
+      - DOCUMENT=40000009
+      - BIRTHDATE=2003-08-25
+      - NUMBER=1009
+    volumes:
+      - ./client/config.yaml:/config.yaml:ro
+    networks:
+      - testing_net
+    depends_on:
+      - server
+  client10:
+    container_name: client10
+    image: client:latest
+    entrypoint: /client
+    environment:
+      - CLI_ID=10
+      - NAME=name10
+      - SURNAME=surname10
+      - DOCUMENT=40000010
+      - BIRTHDATE=2003-08-25
+      - NUMBER=1010
+    volumes:
+      - ./client/config.yaml:/config.yaml:ro
+    networks:
+      - testing_net
+    depends_on:
+      - server
 networks:
   testing_net:
     ipam:
