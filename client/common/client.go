@@ -88,6 +88,93 @@ func (c *Client) createClientSocket() error {
 	return nil
 }
 
+// createBetMessage serializes BetInfo struct in Client
+// Messages are styled: "TYPE/data_1/.../data_n\n"
+func (c* Client) createBetMessage() string {
+	return fmt.Sprintf("BET/%s/%s/%s/%s/%s/%s\n",
+			c.betInfo.Agency,
+			c.betInfo.Name,
+			c.betInfo.Surname,
+			c.betInfo.Document, 
+			c.betInfo.Birthdate,
+			c.betInfo.Number)
+}
+
+// sendBet creates the bet message and sends it through the socket. 
+// it also waits for server ack to ensure correct communication flow
+func (c* Client) sendBet() error {
+	betMessage := c.createBetMessaege()
+
+	if err := c.sendMessage(betMessage); err != nil {
+		return fmt.Errorf("failed to send bet: %v", err)
+	}
+
+	response, err := c.receiveMessage()
+	if err != nil {
+		return fmt.Errorf("failed to receive response from server: %v", err)
+	}
+
+	if err := c.parseResponseFromServer(response); err != nil {
+		return fmt.Errorf("failed to parse response from server: %v", err)
+	}
+
+	return nil
+}
+
+// sendMessage sends a string through the socket, it continues sending until the complete
+// message is transmitted, avoiding short-writes
+func (c* Client) sendMessage(message string) error {
+	data := []byte(message)
+	totalSent := 0
+
+	for totalSent < len(data) {
+		sent, err := c.conn.Write(data[totalSent:])
+		if err != nil {
+			return err
+		}
+		totalSent += sent
+	}
+
+	return nil
+}
+
+// receiveMessage receives server answer
+// TODO: handle short-reads
+func (c* Client) receiveMessage() (string, error) {
+	reader := bufio.NewReader(c.conn)
+	message, err := reader.ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(message), nil
+}
+
+// parseResponseFromServer receives the message from the server and verifies its contents
+func (c* Client) parseResponseFromServer(response string) error {
+	parts := strings.Split(response, "/")
+	if len(parts) < 3 {
+		return fmt.Errorf("invalid response format")
+	}
+
+	if parts[0] != "RESPONSE" {
+		return fmt.Errorf("unexpected response type: %s", parts[0])
+	}
+
+	status := parts[1]
+	message := parts[2]
+
+	if status == "SUCCESS" {
+		log.Infof("action: apuesta_enviada | result: success | dni: %s | numero: %s",
+			c.betInfo.Document, c.betInfo.Number)
+		return nil
+	} else {
+		log.Errorf("action: apuesta_enviada | result: fail | dni: %s | numero: %s | error: %s",
+			c.betInfo.Document, c.betInfo.Number, message)
+		return fmt.Errorf("server error: %s", message)
+	}
+}
+
 // closeConnection Close connection with logging
 func (c *Client) closeConnection() {
 	if c.conn != nil {
