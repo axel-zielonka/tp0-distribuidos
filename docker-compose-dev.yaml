@@ -27,6 +27,57 @@ services:
       - testing_net
     depends_on:
       - server
+  client2:
+    container_name: client2
+    image: client:latest
+    entrypoint: /client
+    environment:
+      - CLI_ID=2
+      - NAME=name2
+      - SURNAME=surname2
+      - DOCUMENT=40000002
+      - BIRTHDATE=2003-08-25
+      - NUMBER=1002
+    volumes:
+      - ./client/config.yaml:/config.yaml:ro
+    networks:
+      - testing_net
+    depends_on:
+      - server
+  client3:
+    container_name: client3
+    image: client:latest
+    entrypoint: /client
+    environment:
+      - CLI_ID=3
+      - NAME=name3
+      - SURNAME=surname3
+      - DOCUMENT=40000003
+      - BIRTHDATE=2003-08-25
+      - NUMBER=1003
+    volumes:
+      - ./client/config.yaml:/config.yaml:ro
+    networks:
+      - testing_net
+    depends_on:
+      - server
+  client4:
+    container_name: client4
+    image: client:latest
+    entrypoint: /client
+    environment:
+      - CLI_ID=4
+      - NAME=name4
+      - SURNAME=surname4
+      - DOCUMENT=40000004
+      - BIRTHDATE=2003-08-25
+      - NUMBER=1004
+    volumes:
+      - ./client/config.yaml:/config.yaml:ro
+    networks:
+      - testing_net
+    depends_on:
+      - server
 networks:
   testing_net:
     ipam:

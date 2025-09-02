@@ -1,6 +1,7 @@
 import socket
 import logging
 from .utils import Bet, store_bets
+from .protocol import Protocol
 
 
 class Server:
@@ -24,7 +25,9 @@ class Server:
             while self._running:
                 try:
                     client_sock = self.__accept_new_connection()
-                    self.__handle_client_connection(client_sock)
+                    addr = client_sock.getpeername()
+                    protocol = Protocol(client_sock)
+                    self.__handle_client_connection(protocol, addr)
                 except Exception as e:
                     if self._running:
                         logging.error(f"action: handle_connection | result: fail | error: {e}")
@@ -50,53 +53,23 @@ class Server:
             logging.info("action: close_server_socket | result: success")
             self._server_socket = None
     
-    def __handle_client_connection(self, client_sock):
-        """
-        Read message from a specific client socket and closes the socket
-
-        If a problem arises in the communication with the client, the
-        client socket will also be closed
-        """
+    def __handle_client_connection(self, protocol: Protocol, addr):
         try:
-            message = self.__receive_message(client_sock)
-            addr = client_sock.getpeername()
-
+            message = protocol.receive_message()
             logging.debug(f"action: receive_message | result: success | ip: {addr[0]} | msg: {message}")
-
             response = self.__process_bet_message(message)
 
-            self.__send_message(client_sock, response)
+            protocol.send_message(response)
         except Exception as e:
             logging.error(f"action: handle_client | result: fail | error: {e}")
             try:
                 error_response = "RESPONSE/ERROR/Error procesando apuesta\n"
-                self.__send_message(client_sock, error_response)
+                protocol.send_message(error_response)
             except:
                 pass
         finally:
-            client_sock.close()
+            protocol.close()
 
-    def __receive_message(self, client_sock):
-        message = b""
-        while True:
-            chunk = client_sock.recv(1024)
-            if not chunk:
-                break
-            message += chunk
-            if b'\n' in message:
-                break
-        return message.decode('utf-8').strip()
-    
-    def __send_message(self, client_sock, message):
-        data = message.encode('utf-8')
-        total_sent = 0
-
-        while total_sent < len(data):
-            sent = client_sock.send(data[total_sent:])
-            if sent == 0:
-                raise RuntimeError("Socket connection broken")
-            total_sent += sent
-    
     def __process_bet_message(self, message):
         try:
             parts = message.split('/')
