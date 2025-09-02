@@ -34,7 +34,7 @@ for i in $(seq 1 "$NUM_CLIENTS"); do
       - CLI_ID=${i}
       - NAME=name${i}
       - SURNAME=surname${i}
-      - DNI=$((40000000 + i))
+      - DOCUMENT=$((40000000 + i))
       - BIRTHDATE=2003-08-25
       - NUMBER=$((1000 + i))
     volumes:
