@@ -32,13 +32,9 @@ for i in $(seq 1 "$NUM_CLIENTS"); do
     entrypoint: /client
     environment:
       - CLI_ID=${i}
-      - NAME=name${i}
-      - SURNAME=surname${i}
-      - DOCUMENT=$((40000000 + i))
-      - BIRTHDATE=2003-08-25
-      - NUMBER=$((1000 + i))
     volumes:
       - ./client/config.yaml:/config.yaml:ro
+      - ./.data/agency-${i}.csv/agency.csv
     networks:
       - testing_net
     depends_on:
