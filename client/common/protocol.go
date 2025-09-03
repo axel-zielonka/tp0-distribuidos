@@ -11,6 +11,8 @@ import (
 	"github.com/op/go-logging"
 )
 
+const MAX_BATCH_SIZE = 8192
+
 var protocolLog = logging.MustGetLogger("protocol")
 
 type ClientProtocol struct {
@@ -167,6 +169,10 @@ func (cp *ClientProtocol) sendBatch(conn net.Conn, batch []BetInfo, betsSent int
 	}
 
 	batchString := strings.Join(betsString, ";")
+
+	if len(batchString) > MAX_BATCH_SIZE {
+		return fmt.Errorf("Batch size cannot exceed 8kb")
+	}
 
 	if err := cp.sendMessage(batchString); err != nil {
 		return err
