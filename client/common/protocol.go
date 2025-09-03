@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 	"encoding/binary"
+	"strconv"
 
 	"github.com/op/go-logging"
 )
@@ -16,6 +17,13 @@ type ClientProtocol struct {
 	conn net.Conn
 	id string
 }
+
+type ServerResponse struct {
+	Status  string
+	Message string
+	betCount int
+}
+
 
 func NewClientProtocol(id string, conn net.Conn) (ClientProtocol) {
 	return ClientProtocol{conn: conn, id: id}
@@ -44,7 +52,7 @@ func (cp *ClientProtocol) SendBet(bet BetInfo) (*ServerResponse, error) {
 // createBetMessage serializes BetInfo struct in Client
 // Messages are styled: "BET/<name>/<surname>/<document>/<birthdate>/<number>\n"
 func (cp *ClientProtocol) createBetMessage(bet BetInfo) string {
-	return fmt.Sprintf("BET/%s/%s/%s/%s/%s/%s\n",
+	return fmt.Sprintf("%s/%s/%s/%s/%s/%s",
 			bet.Agency,
 			bet.Name,
 			bet.Surname,
@@ -116,20 +124,70 @@ func (cp *ClientProtocol) receiveMessage() (string, error) {
 	}
 }
 
+// sendBets first sends the total amount of bets, and then sends the bets in totalBets/maxBatchSize chunks.
+func (cp* ClientProtocol) sendBets(conn net.Conn, bets []BetInfo, maxBatchSize int) error {
+	totalBets := len(bets)
+	totalSize := uint16(totalBets)
+
+	betSizeBuf := make([]byte, 2)
+	binary.BigEndian.PutUint16(betSizeBuf, totalSize)
+
+	if err := cp.sendAll(cp.conn, betSizeBuf); err != nil {
+		return fmt.Errorf("Error while sending betCount")
+	}
+
+	betCount := 0
+
+	for start := 0; start < len(bets); start += maxBatchSize {
+		end := start + maxBatchSize
+		if end > len(bets) {
+			end = len(bets)
+		}
+
+		currentBatch := bets[start:end]
+		betCount += len(currentBatch)
+
+		err := cp.sendBatch(cp.conn, currentBatch, betCount)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// sendBatch serializes a chunk of bets and sends it to the server, ensuring no short-writes
+func (cp *ClientProtocol) sendBatch(conn net.Conn, batch []BetInfo, betsSent int) error {
+	betsString := make([]string, 0, len(batch))
+
+	for _, bet := range batch {
+		betString := cp.createBetMessage(bet)
+
+		betsString = append(betsString, betString)
+	}
+
+	batchString := strings.Join(betsString, ";")
+
+	if err := cp.sendMessage(batchString); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+
 // parseResponseFromServer receives the message from the server and verifies its contents
 func (cp* ClientProtocol) parseResponseFromServer(response string) (*ServerResponse, error) {
 	parts := strings.Split(response, "/")
-	if len(parts) < 3 {
+	if len(parts) != 3 {
 		return nil, fmt.Errorf("invalid response format")
 	}
 
-	if parts[0] != "RESPONSE" {
-		return nil, fmt.Errorf("unexpected response type: %s", parts[0])
-	}
+	bets, _ := strconv.Atoi(parts[2])
 
 	return &ServerResponse {
-		Type: parts[0],
-		Status: parts[1],
-		Message: parts[2],
+		Status: parts[0],
+		Message: parts[1],
+		betCount: bets,
 	}, nil
 }

@@ -16,14 +16,15 @@ type ClientConfig struct {
 	ServerAddress string
 	LoopAmount    int
 	LoopPeriod    time.Duration
+	MaxBatchSize  int
 }
 
 // Client Entity that encapsulates how
 type Client struct {
-	config  ClientConfig
-	conn    net.Conn
-	betInfo BetInfo
-	protocol ClientProtocol
+	config  	ClientConfig
+	conn    	net.Conn
+	bets 		[]BetInfo
+	protocol 	ClientProtocol
 }
 
 // NewClient Initializes a new client receiving the configuration
@@ -33,13 +34,13 @@ func NewClient(config ClientConfig) *Client {
 		config: config,
 	}
 
-	betInfo, err := loadBetDataFromEnv(client.config.ID)
+	bets, err := loadBetsFromFile(client.config.ID)
 
 	if err != nil {
 		log.Criticalf("action: load_bet_data | result: fail | client_id: %v | error: %v", config.ID, err)
 	}
 
-	client.betInfo = betInfo
+	client.bets = bets
 
 	return client
 }
@@ -81,29 +82,38 @@ func (c *Client) StartClientLoop(ctx context.Context) {
 
 	c.protocol = NewClientProtocol(c.config.ID, c.conn)
 
-	response, err := c.protocol.SendBet(c.betInfo)
+	err := c.protocol.sendBets(c.conn, c.bets, c.config.MaxBatchSize)
 	if err != nil {
-		log.Errorf("action: send_bet | result: fail | client_id: %v | error: %v", c.config.ID, err)
+		log.Infof("action: send_bets | result: fail | error: %v", err)
+		c.closeConnection()
+		return
+	}
+
+	log.Infof("action: send_bets | result: success")
+
+	serverResponse, err := c.protocol.receiveMessage()
+	if err != nil {
+		log.Infof("action: receive_message | result: fail | error: %v", err)
+		c.closeConnection()
+		return
+	}
+
+	response, err := c.protocol.parseResponseFromServer(serverResponse)
+
+	if err != nil {
+		log.Infof("action: receive_message | result: fail | error: %v", err)
+		c.closeConnection()
 		return
 	}
 
 	c.handleServerResponse(response)
-
 	c.closeConnection()
-
-	select {
-	case <-ctx.Done():
-		log.Infof("action: shutdown | result: succes | client_id: %v", c.config.ID)
-		return
-	case <-time.After(c.config.LoopPeriod):
-	}
-	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 }
 
 func (c *Client) handleServerResponse(response *ServerResponse) {
-	if response.Status == "SUCCESS" {
-		log.Infof("action: apuesta_enviada | result: success | dni: %s | numero: %s", c.betInfo.Document, c.betInfo.Number)
+	if response.betCount != len(c.bets) {
+		log.Infof("action: apuesta_almacenada | result: fail | cantidad: %d | error: %v", response.betCount, response.Message)
 	} else {
-		log.Errorf("action: apuesta_enviada | result: success | dni: %s | numero: %s | error: %s", c.betInfo.Document, c.betInfo.Number, response.Message)
+		log.Infof("action: apuesta_almacenada | result: success | cantidad: %d", response.betCount)
 	}
 }

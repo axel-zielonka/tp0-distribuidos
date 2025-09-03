@@ -55,39 +55,26 @@ class Server:
     
     def __handle_client_connection(self, protocol: Protocol, addr):
         try:
-            message = protocol.receive_message()
-            logging.debug(f"action: receive_message | result: success | ip: {addr[0]} | msg: {message}")
-            response = self.__process_bet_message(message)
+            bets, bet_count = protocol.receive_bets()
+            response = ""
+            if bets == None:
+                message = f"ERROR/Unknown/{bet_count}\n"
+                logging.info(f"action: apuesta_recibida | result: fail | cantidad: {bet_count}")
+            else:
+                response = f"SUCCESS/SUCCESS/{bet_count}\n"
+                store_bets(bets)
+                logging.info(f"action: apuesta_recibida | result: success | cantidad: {bet_count}")
 
             protocol.send_message(response)
         except Exception as e:
             logging.error(f"action: handle_client | result: fail | error: {e}")
             try:
-                error_response = "RESPONSE/ERROR/Error procesando apuesta\n"
+                error_response = "ERROR/Unknown/0\n"
                 protocol.send_message(error_response)
             except:
                 pass
         finally:
             protocol.close()
-
-    def __process_bet_message(self, message):
-        try:
-            parts = message.split('/')
-            if len(parts) != 7 or parts[0] != 'BET':
-                return "RESPONSE/ERROR/Formato de mensaje invalido\n"
-    
-            _, agency, name, surname, document, birthdate, number = parts
-            
-            bet = Bet(agency, name, surname, document, birthdate, number)
-
-            store_bets([bet])
-
-            logging.info(f"action: apuesta_almacenada | result: success | dni: {document} | numero: {number}")
-            return "RESPONSE/SUCCESS/Apuesta registrada correctamente\n"
-        except Exception as e:
-            logging.error(f"action: process_bet | result: fail | error: {e}")
-            return "RESPONSE/ERROR/Error\n"
-
 
     def __accept_new_connection(self):
         """

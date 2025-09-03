@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"os"
+	"encoding/csv"
 )
 
 type BetInfo struct {
@@ -13,33 +14,35 @@ type BetInfo struct {
 	Birthdate string
 	Number    string
 }
-
-type ServerResponse struct {
-	Type    string
-	Status  string
-	Message string
-}
-
-func loadBetDataFromEnv(clientID string) (BetInfo, error) {
-	var bet BetInfo
-
-	bet.Agency = clientID
-	bet.Name = os.Getenv("NAME")
-	bet.Surname = os.Getenv("SURNAME")
-	bet.Document = os.Getenv("DOCUMENT")
-	bet.Birthdate = os.Getenv("BIRTHDATE")
-
-	numberStr := os.Getenv("NUMBER")
-
-	if numberStr == "" {
-		return bet, fmt.Errorf("NUMBER environment variable is required")
+// opens the .csv file and reads it, parsing every line into an instance of BetInfo 
+func loadBetsFromFile(agencyID string) ([]BetInfo, error) {
+	file, err := os.Open("agency.csv")
+	if err != nil {
+		log.Errorf("action: read_bet_file | result: fail | error: %v", err)
+		return nil, err
 	}
 
-	bet.Number = numberStr
+	defer file.Close()
 
-	if bet.Name == "" || bet.Surname == "" || bet.Document == "" || bet.Birthdate == "" {
-		return BetInfo{}, fmt.Errorf("All bet data fields are required")
+	reader := csv.NewReader(file)
+	lines, err := reader.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("Error reading file: %v", err)
 	}
 
-	return bet, nil
+	var bets []BetInfo 
+	for _, line := range lines {
+		bet := BetInfo {
+			Agency: agencyID,
+			Name: line[0],
+			Surname: line[1],
+			Document: line[2],
+			Birthdate: line[3],
+			Number: line[4],
+		}
+
+		bets = append(bets, bet)
+	}
+
+	return bets, nil
 }
