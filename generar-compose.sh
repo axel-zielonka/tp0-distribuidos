@@ -34,7 +34,7 @@ for i in $(seq 1 "$NUM_CLIENTS"); do
       - CLI_ID=${i}
     volumes:
       - ./client/config.yaml:/config.yaml:ro
-      - ./.data/agency-${i}.csv/agency.csv
+      - ./.data/agency-${i}.csv:/agency.csv
     networks:
       - testing_net
     depends_on:
