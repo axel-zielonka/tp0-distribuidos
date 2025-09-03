@@ -22,11 +22,12 @@ func loadBetsFromFile(agencyID string) ([]BetInfo, error) {
 		return nil, err
 	}
 
-	defer file.Close()
+
 
 	reader := csv.NewReader(file)
 	lines, err := reader.ReadAll()
 	if err != nil {
+		file.Close()
 		return nil, fmt.Errorf("Error reading file: %v", err)
 	}
 
@@ -43,6 +44,6 @@ func loadBetsFromFile(agencyID string) ([]BetInfo, error) {
 
 		bets = append(bets, bet)
 	}
-
+	file.Close()
 	return bets, nil
 }

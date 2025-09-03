@@ -113,9 +113,14 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGTERM)
 	
 	go func() {
-		sig := <-sigChan
-		log.Infof("action: shutdown_signal | result: in_progress | signal: %v | client_id: %s", sig, v.GetString("id"))
-		cancel()
+		select {
+		case sig := <-sigChan:
+			log.Infof("action: shutdown_signal | result: in_progress | signal: %v | client_id: %s", sig, v.GetString("id"))
+			cancel()
+
+		case <- ctx.Done():
+			return
+		}
 	}()
 
 	clientConfig := common.ClientConfig{

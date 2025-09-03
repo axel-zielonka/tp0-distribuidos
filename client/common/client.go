@@ -98,6 +98,8 @@ func (c *Client) StartClientLoop(ctx context.Context) {
 		return
 	}
 
+	c.closeConnection()
+
 	response, err := c.protocol.parseResponseFromServer(serverResponse)
 
 	if err != nil {
@@ -107,7 +109,16 @@ func (c *Client) StartClientLoop(ctx context.Context) {
 	}
 
 	c.handleServerResponse(response)
-	c.closeConnection()
+	
+
+	select {
+	case <-ctx.Done():
+		c.closeConnection()
+		log.Infof("action: shutdown | result: succes | client_id: %v", c.config.ID)
+		return
+	case <-time.After(c.config.LoopPeriod):
+	}
+	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 }
 
 func (c *Client) handleServerResponse(response *ServerResponse) {

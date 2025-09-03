@@ -1,7 +1,7 @@
 package common
 
 import (
-	"bufio"
+	// "bufio"
 	"fmt"
 	"net"
 	"strings"
@@ -109,21 +109,37 @@ func (cp *ClientProtocol) receiveMessage() (string, error) {
 		return "", fmt.Errorf("socket closed")
 	}
 
-	reader := bufio.NewReader(cp.conn)
+	// reader := bufio.NewReader(cp.conn)
 	var message []byte
+	buf := make([]byte, 1)
 
 	for {
-		b, err := reader.ReadByte()
+		b, err := cp.conn.Read(buf)
 		if err != nil {
 			return "", err
 		}
 
-		if b == '\n' {
-			return strings.TrimSpace(string(message)), nil
+		if b > 0 {
+			b := buf[0]
+			if b == '\n'{
+				return strings.TrimSpace(string(message)), nil
+			}
+			message = append(message, b)
 		}
-
-		message = append(message, b)
 	}
+
+	// for {
+	// 	b, err := reader.ReadByte()
+	// 	if err != nil {
+	// 		return "", err
+	// 	}
+
+	// 	if b == '\n' {
+	// 		return strings.TrimSpace(string(message)), nil
+	// 	}
+
+	// 	message = append(message, b)
+	// }
 }
 
 // sendBets first sends the total amount of bets, and then sends the bets in totalBets/maxBatchSize chunks.

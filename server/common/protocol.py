@@ -36,7 +36,7 @@ class Protocol:
         for bet in bets_str:
             bet_info = bet.split('/')
             if len(bet_info) != 6:
-                logging.info(f"action: apuesta_recibida | result: fail | cantidad: {bet_count}")
+                logging.info(f"action: apuesta_recibida | result: fail | cantidad: {bets_read}")
                 raise ValueError("Invalid bet")
             
             new_bet = Bet(bet_info[0], bet_info[1], bet_info[2], bet_info[3], bet_info[4], bet_info[5])
