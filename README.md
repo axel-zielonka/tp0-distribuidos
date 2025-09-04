@@ -311,6 +311,34 @@ Las funciones `load_bets(...)` y `has_won(...)` son provistas por la cátedra y 
 
 No es correcto realizar un broadcast de todos los ganadores hacia todas las agencias, se espera que se informen los DNIs ganadores que correspondan a cada una de ellas.
 
+#### Resolución del ejercicio
+Se implementó en el protocolo del cliente la función `sendMessageType()`, que envía al servidor en 1 byte el tipo de mensaje que va a enviar después: B de Bet (apuesta), F de Finished o R de Results. 
+
+![sendType](img/ej7_img1.png)
+
+También se implementó la función `askForResults()`, que envía un mensaje de tipo R y se queda esperando a la respuesta del servidor. Esta función devuelve la cantidad de ganadores recibidos, o error en caso de que haya ocurrido un problema
+
+![askForResults](img/ej7_img2.png)
+
+En el loop del cliente, se agregó la lógica para la espera de los resultados. El cliente pide los resultados al servidor, y si no recibe respuesta se desconecta y hace un sleep. Pasado ese tiempo, se vuelve a conectar e intenta de vuelta. De esta forma, ningún cliente se queda bloqueado esperando a los resultados.
+
+![loop](img/ej7_img3.png)
+
+En el servidor se agregaron los siguientes atributos:
+* `clients`: indica la cantidad de clientes que se esperan, se leen de una variable de entorno en el `docker-compose-dev.yaml`
+* `already_finished_clients`: indica la cantidad de clientes que pidieron los resultados
+* `winners`: es un listado con los ganadores
+
+![atributos](img/ej7_img4.png)
+
+Se agregó la lógica según el mensaje recibido. . En caso de que sea un mensaje `B`, se mantiene la lógica anterior. En caso de recibir un mensaje `F`, se corta el loop de recepción de apuestas que se encontraba en `receive_bets()` del protocolo. En caso de recibir un pedido de resultados, se hace el sorteo en caso de que no se haya hecho y luego se recibe la agencia correspondiente y se envían todas los ganadores de apuestas con el `id` de agencia correspondiente. 
+
+![handleClient](img/ej7_img5.png)
+
+![parseBets](img/ej7_img6.png)
+
+![string](img/ej7_img7.png)
+
 ## Parte 3: Repaso de Concurrencia
 En este ejercicio es importante considerar los mecanismos de sincronización a utilizar para el correcto funcionamiento de la persistencia.
 
