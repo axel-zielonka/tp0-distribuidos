@@ -9,7 +9,7 @@ fi
 OUTPUT_FILE="$1"
 NUM_CLIENTS="$2"
 
-cat > "$OUTPUT_FILE" <<'END'
+cat > "$OUTPUT_FILE" <<END
 name: tp0
 services:
   server:
@@ -18,6 +18,7 @@ services:
     entrypoint: python3 /main.py
     environment:
       - PYTHONUNBUFFERED=1
+      - CLIENTS=${NUM_CLIENTS}
     volumes:
       - ./server/config.ini:/config.ini:ro
     networks:
