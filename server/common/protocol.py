@@ -1,6 +1,9 @@
 import logging
 from .utils import Bet
 
+NO_WINNER = "NONE"
+FINISH_MESSAGE = "F"
+
 class Protocol:
 
     def __init__(self, sock):
@@ -31,6 +34,10 @@ class Protocol:
     # receives a chunk of data through the socket and deserializes it to a list of Bets
     def parse_bets(self, bet_list, bets_read):
         msg = self.receive_message()
+
+        if msg == FINISH_MESSAGE:
+            return bet_list, True
+        
         bets_str = msg.split(';')
 
         for bet in bets_str:
@@ -42,26 +49,32 @@ class Protocol:
             new_bet = Bet(bet_info[0], bet_info[1], bet_info[2], bet_info[3], bet_info[4], bet_info[5])
 
             bet_list.append(new_bet)
-        return bet_list
+        return bet_list, False
 
 
     # reads the socket for the total amount of bets expected and then reads chunks until there are 
     # no more things to read. If bets_read == bet_count then it returns the Bet list, if not it returns None
     def receive_bets(self):
         bet_count = int.from_bytes(self._sock.recv(2), byteorder='big')
-
         bets_read = 0
-
         bets = []
-
+        finished = False
         try:
-            while bets_read != bet_count:
-                bets = self.parse_bets(bets, bet_count)
+            while not finished:
+                bets, finished = self.parse_bets(bets, bet_count)
                 bets_read = len(bets)
         except OSError as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")
 
         return bets, bets_read
+
+    def get_string_result(self, winners):
+        if len(winners) == 0:
+            msg = NO_WINNER
+        else:
+            msg = ";".join([f"{winner.document}" for winner in winners])
+        msg += '\n'
+        return msg
 
     def close(self):
         try:
