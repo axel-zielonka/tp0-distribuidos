@@ -48,6 +48,7 @@ def main():
     logging_level = config_params["logging_level"]
     port = config_params["port"]
     listen_backlog = config_params["listen_backlog"]
+    clients = os.environ["CLIENTS"]
 
     initialize_log(logging_level)
 
@@ -57,7 +58,7 @@ def main():
                   f"listen_backlog: {listen_backlog} | logging_level: {logging_level}")
 
     # Initialize server and start server loop
-    server = Server(port, listen_backlog)
+    server = Server(port, listen_backlog, clients)
 
     signal.signal(signal.SIGTERM, lambda signum, frame: signal_handler(signum, frame, server))
     try:
