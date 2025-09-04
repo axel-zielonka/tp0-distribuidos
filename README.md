@@ -259,6 +259,45 @@ La cantidad máxima de apuestas dentro de cada _batch_ debe ser configurable des
 
 Por su parte, el servidor deberá responder con éxito solamente si todas las apuestas del _batch_ fueron procesadas correctamente.
 
+#### Resolución del ejercicio
+
+> [!NOTE] Sobre el protocolo
+> El protocolo fue modificado respecto al ejercicio 5. Lo tuve que modificar para realizar este ejercicio y por tiempos preferí continuar en los próximos ejercicios con este nuevo protocolo sin modfificarlo en el ejercicio anterior.
+
+Se modificó el script `generar-compose.sh` para inyectar la persistencia del archivo de apuestas. Además, se quitaron las variables de entorno ya que las apuestas ahora se leen del archivo `.csv` de cada agencia. 
+
+![script](img/ej6_img1.png)
+
+En el cliente, se modificaron las siguientes cosas:
+* La lectura del archivo de cada agencia y la carga de las correspondientes apuestas se hace en `loadBetsFromFile` en el archivo `client/common/bet.go`. En esta función, se lee el archivo línea por línea y se cargan los datos. 
+
+![loadBets](img/ej6_img2.png)
+
+* En el archivo `client/common/client.go` se agregó la variable de configuración para el tamaño máximo del batch, que se lee desde el archivo de configuración. Además, en el inicializador del cliente se llama a la lectura del archivo de las apuestas.
+
+* Los cambios más importantes se hicieron en el protocolo. Para comenzar, al ya no ser un único mensaje enviado al servidor, sino que son múltiples _batches_ de datos, fue necesario cambiar el formato de los envíos. En primer lugar, las apuestas pasaron de serializarse de `BET/<Agencia>/<Nombre>/<Apellido>/<Documento>/<Fecha de nacimiento>/<Numero>\n` a serializarse de la forma `<Agencia>/<Nombre>/<Apellido>/<Documento>/<Fecha de nacimiento>/<Numero>`. Lo siguiente que se hizo es que al agrupar varias apuestas en un mismo _batch_ éstas se separaban con un `;`, quedando entonces de la forma `Apuesta1;Apuesta2;Apuesta3;...;ApuestaN`. De esta forma, se reduce la cantidad de bytes por envío, haciendo más eficiente cada transmisión, ya que no se está enviando el tipo de mensaje `BET` antes de cada apuesta. Por otra parte, se modificaron también los métodos de envío de datos. En lugar de `sendBet()`, ahora se cuenta con `sendBets()` que primero envía el total de apuestas que se van a transmitir, y luego hace un loop para cada _batch_ llamando a `sendBatch()` que serializa cada apuesta y las une en una misma tira de bytes para el envío. Cabe aclarar que `sendBatch()` vendría a reemplazar a `sendBet()`, pero aplicado a múltiples apuestas, ya que envía el largo del mensaje y luego transmite los bytes haciendo uso de `sendAll()` que se asegura que no sucedan _short-writes_. Se hicieron modificaciones también en `receiveMessage()`. Se modificó la forma en la que se leía del socket. El uso de `bufio.NewReader` junto con `ReadByte` podían hacer que el socket quede bloqueado aún cuando se hacía un _close_ del mismo. Es por esto que se modificó y ahora se hace la misma lectura de un byte a la vez pero usando un buffer de tamaño 1, con `Conn.Read`, que si se cierra el socket se desbloquea. Por último desde el lado del protocolo del cliente, se agregó un campo `betCount` al struct `ServerResponse` reemplazando al campo `type`, para chequear que el número de apuestas que recibió el servidor sea el mismo que el número de apuestas enviadas por el cliente.
+
+![sendBets](img/ej6_img3.png)
+
+![sendBatch](img/ej6_img4.png)
+
+![receiveMessage](img/ej6_img5.png)
+
+![serverResponse](img/ej6_img6.png)
+
+En el servidor se realizaron los siguientes cambios:
+* Se eliminó la función `__process_bet_message` en `server/common/server.py` ya que la lógica no debería estar ahí sino en el protocolo.
+
+* Al igual que en el cliente, se realizaron los cambios más significativos en el protocolo. Se implementó la función `receive_bets()` que lee del socket la cantidad de apuestas que se van a recibir. Esto se hace para tener como validación luego de leer todos los _batches_, si el número final de apuestas recibidas no coincide con el número de apuestas recibido originalmente significa que se produjo algún error en el envío o en la lectura. En esta función se entra en un loop que se repite mientras las apuestas leídas no sean las apuestas esperadas. En este loop, se llama a la función `parse_bets()`. Esta función llama a `receive_message()` y, separando por el caracter `;`, obtiene una lista de strings. Luego, para cada string recibido lo deserializa separando los componentes con el separador `/`. Luego almacena la apuesta recibida en caso de que tenga un formato válido, y si no devuelve un `ValueError`. Por último, se modificaron los mensajes enviados por el servidor. Antes tenían la forma `<TYPE>/<success>/<message>\n` y ahora pasan a tener la forma `<success>/<success>/<bets>\n`, donde el primer success indica si se procesaron con éxito las apuestas, el segundo repite en caso de éxito y en caso de error indica el tipo, y `bets` indica la cantidad de apuestas recibidas.
+
+![receive_bets](img/ej6_img7.png)
+
+![parse_bets](img/ej6_img8.png)
+
+![handle_client](img/ej6_img9.png)
+
+
+
 ### Ejercicio N°7:
 
 Modificar los clientes para que notifiquen al servidor al finalizar con el envío de todas las apuestas y así proceder con el sorteo.
