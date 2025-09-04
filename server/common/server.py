@@ -2,6 +2,7 @@ import socket
 import logging
 from common import utils
 from .protocol import Protocol
+import threading
 
 BET_MESSAGE = "B"
 FINISH_MESSAGE = "F"
@@ -17,6 +18,8 @@ class Server:
         self.clients = clients
         self.already_finished_clients = 0
         self.winners = []
+        self.lock = threading.Lock()
+        self.threads = []
 
     def run(self):
         """
@@ -32,17 +35,25 @@ class Server:
                 try:
                     client_sock = self.__accept_new_connection()
                     addr = client_sock.getpeername()
-                    protocol = Protocol(client_sock)
-                    self.__handle_client_connection(protocol, addr)
+                    if client_sock:
+                        client_thread = threading.Thread(target=self.__handle_client_connection, args=(client_sock,))
+                        client_thread.daemon = True
+                        client_thread.start()
+                        self.threads.append(client_thread)
                 except Exception as e:
                     if self._running:
                         logging.error(f"action: handle_connection | result: fail | error: {e}")
                         continue  # Ignore unless shutdown is requested
                     else:
                         break
+                self.__wait_for_threads()
         finally:
             self.__close_server_socket()
             logging.info("action: server_run | result: success")
+
+    def __wait_for_threads(self):
+        for thread in self.threads:
+            thread.join()
 
     def shutdown(self):
         logging.info("action: server_shutdown | result: in_progress")
@@ -52,6 +63,8 @@ class Server:
                 self._server_socket.shutdown(socket.SHUT_RDWR)
             except OSError:
                 pass
+        self.__wait_for_threads()
+        logging.info("action: server_shutdown | result: success")
 
     def __close_server_socket(self):
         if self._server_socket:
@@ -59,7 +72,8 @@ class Server:
             logging.info("action: close_server_socket | result: success")
             self._server_socket = None
     
-    def __handle_client_connection(self, protocol: Protocol, addr):
+    def __handle_client_connection(self, client_sock):
+        protocol = Protocol(client_sock)
         try:            
             message_type = protocol.receive_message()
             bet_count = 0
@@ -71,22 +85,26 @@ class Server:
                     logging.info(f"action: apuesta_recibida | result: fail | cantidad: {bet_count}")
                     protocol.send_message(response)
                 else:
-                    self.already_finished_clients += 1
+                    with self.lock:
+                        self.already_finished_clients += 1
                     response = f"SUCCESS/SUCCESS/{bet_count}\n"
                     logging.info(f"action: apuesta_recibida | result: success | cantidad: {bet_count}")
-                    utils.store_bets(bets)
+                    protocol.send_message(response)
+                    with self.lock:
+                        utils.store_bets(bets)
             else:
                 agency = protocol.receive_message()
-                if int(self.already_finished_clients) == int(self.clients):
-                    if not self.winners:
-                        bets = utils.load_bets()
-                        winners = [bet for bet in bets if utils.has_won(bet)]
-                        self.winners = winners
-                        logging.info(f"action: sorteo | result: success")
-                    
-                    agency_winners = [bet for bet in self.winners if bet.agency == int(agency)]
-                    response = protocol.get_string_result(agency_winners)
-            protocol.send_message(response)
+                with self.lock:
+                    if int(self.already_finished_clients) == int(self.clients):
+                        if not self.winners:
+                            bets = utils.load_bets()
+                            winners = [bet for bet in bets if utils.has_won(bet)]
+                            self.winners = winners
+                            logging.info(f"action: sorteo | result: success")
+                        
+                        agency_winners = [bet for bet in self.winners if bet.agency == int(agency)]
+                        response = protocol.get_string_result(agency_winners)
+                        protocol.send_message(response)
         except Exception as e:
             logging.error(f"action: handle_client | result: fail | error: {e}")
             try:
