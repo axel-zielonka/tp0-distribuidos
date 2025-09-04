@@ -65,9 +65,27 @@ class Server:
             bet_count = 0
             response = ""
             if message_type == BET_MESSAGE:
-                response = self.__process_bets(protocol, bet_count)
+                bets, bet_count = protocol.receive_bets()
+                if bets == None:
+                    response = f"ERROR/Unknown/{bet_count}\n"
+                    logging.info(f"action: apuesta_recibida | result: fail | cantidad: {bet_count}")
+                    protocol.send_message(response)
+                else:
+                    self.already_finished_clients += 1
+                    response = f"SUCCESS/SUCCESS/{bet_count}\n"
+                    logging.info(f"action: apuesta_recibida | result: success | cantidad: {bet_count}")
+                    utils.store_bets(bets)
             else:
-                response = self.__get_winners(protocol)
+                agency = protocol.receive_message()
+                if int(self.already_finished_clients) == int(self.clients):
+                    if not self.winners:
+                        bets = utils.load_bets()
+                        winners = [bet for bet in bets if utils.has_won(bet)]
+                        self.winners = winners
+                        logging.info(f"action: sorteo | result: success")
+                    
+                    agency_winners = [bet for bet in self.winners if bet.agency == int(agency)]
+                    response = protocol.get_string_result(agency_winners)
             protocol.send_message(response)
         except Exception as e:
             logging.error(f"action: handle_client | result: fail | error: {e}")
@@ -78,31 +96,6 @@ class Server:
                 pass
         finally:
             protocol.close()
-
-    def __get_winners(self, protocol):
-        agency = protocol.receive_message()
-        if int(self.already_finished_clients) == int(self.clients):
-            if not self.winners:
-                bets = utils.load_bets()
-                winners = [bet for bet in bets if utils.has_won(bet)]
-                self.winners = winners
-                logging.info(f"action: sorteo | result: success")
-            
-            agency_winners = [bet for bet in self.winners if bet.agency == int(agency)]
-            response = protocol.get_string_result(agency_winners)
-            return response
-
-    def __process_bets(self, protocol, bet_count):
-        bets, bet_count = protocol.receive_bets()
-        if bets == None:
-            response = f"ERROR/Unknown/{bet_count}\n"
-            logging.info(f"action: apuesta_recibida | result: fail | cantidad: {bet_count}")
-        else:
-            self.already_finished_clients += 1
-            response = f"SUCCESS/SUCCESS/{bet_count}\n"
-            logging.info(f"action: apuesta_recibida | result: success | cantidad: {bet_count}")
-            utils.store_bets(bets)
-        return response
 
     def __accept_new_connection(self):
         """
