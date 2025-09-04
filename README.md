@@ -261,7 +261,9 @@ Por su parte, el servidor deberá responder con éxito solamente si todas las ap
 
 #### Resolución del ejercicio
 
-> [!NOTE] Sobre el protocolo
+> [!NOTE] 
+> Sobre el protocolo
+> 
 > El protocolo fue modificado respecto al ejercicio 5. Lo tuve que modificar para realizar este ejercicio y por tiempos preferí continuar en los próximos ejercicios con este nuevo protocolo sin modfificarlo en el ejercicio anterior.
 
 Se modificó el script `generar-compose.sh` para inyectar la persistencia del archivo de apuestas. Además, se quitaron las variables de entorno ya que las apuestas ahora se leen del archivo `.csv` de cada agencia. 
