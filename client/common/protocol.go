@@ -1,7 +1,6 @@
 package common
 
 import (
-	// "bufio"
 	"fmt"
 	"net"
 	"strings"
@@ -29,26 +28,6 @@ type ServerResponse struct {
 
 func NewClientProtocol(id string, conn net.Conn) (ClientProtocol) {
 	return ClientProtocol{conn: conn, id: id}
-}
-
-func (cp *ClientProtocol) SendBet(bet BetInfo) (*ServerResponse, error) {
-	message := cp.createBetMessage(bet)
-
-	if err := cp.sendMessage(message); err != nil {
-		return nil, fmt.Errorf("failed to send bet: %v", err)
-	}
-
-	responseServer, err := cp.receiveMessage()
-	if err != nil {
-		return nil, fmt.Errorf("failed to receive response: %v", err)
-	}
-
-	response, err := cp.parseResponseFromServer(responseServer)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse response: %v", err)
-	}
-
-	return response, nil
 }
 
 // createBetMessage serializes BetInfo struct in Client
@@ -108,17 +87,13 @@ func (cp *ClientProtocol) receiveMessage() (string, error) {
 	if cp.conn == nil {
 		return "", fmt.Errorf("socket closed")
 	}
-
-	// reader := bufio.NewReader(cp.conn)
 	var message []byte
 	buf := make([]byte, 1)
-
 	for {
 		b, err := cp.conn.Read(buf)
 		if err != nil {
 			return "", err
 		}
-
 		if b > 0 {
 			b := buf[0]
 			if b == '\n'{
@@ -127,19 +102,6 @@ func (cp *ClientProtocol) receiveMessage() (string, error) {
 			message = append(message, b)
 		}
 	}
-
-	// for {
-	// 	b, err := reader.ReadByte()
-	// 	if err != nil {
-	// 		return "", err
-	// 	}
-
-	// 	if b == '\n' {
-	// 		return strings.TrimSpace(string(message)), nil
-	// 	}
-
-	// 	message = append(message, b)
-	// }
 }
 
 // sendBets first sends the total amount of bets, and then sends the bets in totalBets/maxBatchSize chunks.
@@ -153,9 +115,7 @@ func (cp* ClientProtocol) sendBets(conn net.Conn, bets []BetInfo, maxBatchSize i
 	if err := cp.sendAll(cp.conn, betSizeBuf); err != nil {
 		return fmt.Errorf("Error while sending betCount")
 	}
-
 	betCount := 0
-
 	for start := 0; start < len(bets); start += maxBatchSize {
 		end := start + maxBatchSize
 		if end > len(bets) {
@@ -170,7 +130,6 @@ func (cp* ClientProtocol) sendBets(conn net.Conn, bets []BetInfo, maxBatchSize i
 			return err
 		}
 	}
-
 	return nil
 }
 

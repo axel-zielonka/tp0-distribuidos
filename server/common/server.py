@@ -58,7 +58,7 @@ class Server:
             bets, bet_count = protocol.receive_bets()
             response = ""
             if bets == None:
-                message = f"ERROR/Unknown/{bet_count}\n"
+                response = f"ERROR/Unknown/{bet_count}\n"
                 logging.info(f"action: apuesta_recibida | result: fail | cantidad: {bet_count}")
             else:
                 response = f"SUCCESS/SUCCESS/{bet_count}\n"
