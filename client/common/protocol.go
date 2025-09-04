@@ -11,6 +11,11 @@ import (
 )
 
 const MAX_BATCH_SIZE = 8192
+const BET_MESSAGE = "B"
+const FINISH_MESSAGE = "F"
+const ASK_FOR_RESULT_MESSAGE = "R"
+const NO_WINNERS = "NONE"
+
 
 var protocolLog = logging.MustGetLogger("protocol")
 
@@ -154,6 +159,33 @@ func (cp *ClientProtocol) sendBatch(conn net.Conn, batch []BetInfo, betsSent int
 	}
 
 	return nil
+}
+
+func (cp* ClientProtocol) sendMessageType(conn net.Conn, messageType string) error {
+	return cp.sendMessage(messageType)
+}
+
+func (cp* ClientProtocol) changeSocket(conn net.Conn) {
+	cp.conn = conn
+}
+
+func (cp* ClientProtocol) askForResults(conn net.Conn, messageType string) (int, error) {	
+	if err := cp.sendMessageType(cp.conn, messageType); err != nil {
+		return -1, err
+	}
+	agency := cp.id
+	if err := cp.sendMessage(agency); err != nil {
+		return -1, err
+	}
+	msg, err := cp.receiveMessage()
+	if err != nil {
+		return -1, err
+	}
+	if msg == NO_WINNERS {
+		return 0, nil
+	}
+	winners := strings.Split(msg, ";")
+	return len(winners), nil
 }
 
 

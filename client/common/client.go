@@ -10,6 +10,8 @@ import (
 
 var log = logging.MustGetLogger("log")
 
+const TIEMPO_ESPERA_REINTENTO = 100
+
 // ClientConfig Configuration used by the client
 type ClientConfig struct {
 	ID            string
@@ -68,21 +70,22 @@ func(c *Client) closeConnection() {
 
 // StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) StartClientLoop(ctx context.Context) {
-	select {
-	case <-ctx.Done():
-		log.Infof("action: shutdown | result: success | client_id: %v", c.config.ID)
-		if c.conn != nil {
-			c.closeConnection()
-		}
-		return
-	default:
-	}
-
 	c.createClientSocket()
 
 	c.protocol = NewClientProtocol(c.config.ID, c.conn)
 
-	err := c.protocol.sendBets(c.conn, c.bets, c.config.MaxBatchSize)
+	log.Infof("action: start_sending_bets | result: in_progress")
+
+	err := c.protocol.sendMessageType(c.conn, BET_MESSAGE)
+	if err != nil {
+		log.Infof("action: start_sending_bets | result: fail | error: %v", err)
+		c.closeConnection()
+		return
+	} else {
+		log.Infof("action: start_sending_bets | result: success")
+	}
+
+	err = c.protocol.sendBets(c.conn, c.bets, c.config.MaxBatchSize)
 	if err != nil {
 		log.Infof("action: send_bets | result: fail | error: %v", err)
 		c.closeConnection()
@@ -91,14 +94,23 @@ func (c *Client) StartClientLoop(ctx context.Context) {
 
 	log.Infof("action: send_bets | result: success")
 
+	log.Infof("action: finishing_sending_bets | result: in_progress")
+
+	err = c.protocol.sendMessageType(c.conn, FINISH_MESSAGE)
+	if err != nil {
+		log.Infof("action: finishing_sending_bets | result: fail | error: %v", err)
+		c.closeConnection()
+		return
+	} else {
+		log.Infof("action: finishing_sending_bets | result: success")
+	}
+
 	serverResponse, err := c.protocol.receiveMessage()
 	if err != nil {
 		log.Infof("action: receive_message | result: fail | error: %v", err)
 		c.closeConnection()
 		return
 	}
-
-	c.closeConnection()
 
 	response, err := c.protocol.parseResponseFromServer(serverResponse)
 
@@ -109,16 +121,32 @@ func (c *Client) StartClientLoop(ctx context.Context) {
 	}
 
 	c.handleServerResponse(response)
-	
 
-	select {
-	case <-ctx.Done():
-		c.closeConnection()
-		log.Infof("action: shutdown | result: succes | client_id: %v", c.config.ID)
-		return
-	case <-time.After(c.config.LoopPeriod):
+	c.closeConnection()
+	for {
+		select {
+		case <-ctx.Done():
+			c.closeConnection()
+			log.Infof("action: shutdown | result: succes | client_id: %v", c.config.ID)
+			return
+		default:
+			log.Infof("action: consulta_ganadores | result: in_progress")
+			_ = c.createClientSocket()
+			c.protocol.changeSocket(c.conn)
+			ganadores, err := c.protocol.askForResults(c.conn, ASK_FOR_RESULT_MESSAGE)
+			if ganadores < 0 {
+				c.closeConnection()
+				time.After(time.Duration(TIEMPO_ESPERA_REINTENTO * time.Millisecond))
+			}
+			if err == nil {
+				log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %d", ganadores)
+				c.closeConnection()
+				return
+			} else {
+				c.closeConnection()
+			}
+		}
 	}
-	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 }
 
 func (c *Client) handleServerResponse(response *ServerResponse) {
