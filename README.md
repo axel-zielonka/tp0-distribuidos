@@ -227,3 +227,5 @@ Para resolver el problema del paralelismo, recurrí a utilizar _threads_ con _lo
 
 ### Pruebas automáticas 
 Se provee una captura de pantalla mostrando que el código pasa todas las pruebas provistas por la cátedra
+
+![tests](img/tests.png)
