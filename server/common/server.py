@@ -34,7 +34,6 @@ class Server:
             while self._running:
                 try:
                     client_sock = self.__accept_new_connection()
-                    addr = client_sock.getpeername()
                     if client_sock:
                         client_thread = threading.Thread(target=self.__handle_client_connection, args=(client_sock,))
                         client_thread.daemon = True

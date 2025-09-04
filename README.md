@@ -346,6 +346,17 @@ En este ejercicio es importante considerar los mecanismos de sincronización a u
 
 Modificar el servidor para que permita aceptar conexiones y procesar mensajes en paralelo. En caso de que el alumno implemente el servidor en Python utilizando _multithreading_,  deberán tenerse en cuenta las [limitaciones propias del lenguaje](https://wiki.python.org/moin/GlobalInterpreterLock).
 
+#### Resolución del ejercicio
+Para resolver el problema del paralelismo, recurrí a utilizar _threads_ con _locks_ para los accesos a los recursos compartidos. Estos recursos son: el contador de clientes finalizados, el sorteo y el acceso a los archivos de apuestas y ganadores. Si bien es verdad que el Global Interpreter Lock no permite que más de un thread ejecute código de Python a la vez, ocurre que cuando un thread llama a una operación bloqueante, como puede ser un `recv` o un `send` de un socket, se libera el GIL para que lo pueda tomar otro thread. Y siendo esta una aplicación con muchas operaciones de I/O y no tan CPU-intensive, los threads se bloquean y le dan el espacio a otro rápidamente sin que esté mucho tiempo bloqueado. 
+
+![img1](img/ej8_img1.png)
+
+![im2](img/ej8_img2.png)
+
+![img3](img/ej8_img3.png)
+
+![img4](img/ej8_img4.png)
+
 ## Condiciones de Entrega
 Se espera que los alumnos realicen un _fork_ del presente repositorio para el desarrollo de los ejercicios y que aprovechen el esqueleto provisto tanto (o tan poco) como consideren necesario.
 
