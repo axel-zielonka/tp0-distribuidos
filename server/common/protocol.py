@@ -21,7 +21,6 @@ class Protocol:
     # handles meesage receiving through the socket, avoiding short-reads
     def receive_message(self) -> str:
         msgSize = int.from_bytes(self.recvAll(2), byteorder='big')        
-        
         message = self.recvAll(msgSize)
         return message.decode("utf-8")
 

@@ -123,18 +123,6 @@ func parseLine(line []string, id string) BetInfo {
 	}
 }
 
-func readBet(reader *Reader, id string) (BetInfo, error) {
-	line, err := reader.Read()
-		if err == io.EOF {
-			return nil, nil
-		}
-		if err != nil {
-			return nil, err
-		}
-		bet := parseLine(line, id)
-		return bet, nil
-}
-
 // sendBets first sends the total amount of bets, and then sends the bets in totalBets/maxBatchSize chunks.
 func (cp* ClientProtocol) sendBets(conn net.Conn, maxBatchSize int) (error, int) {
 	f, err := os.Open("agency.csv")
@@ -147,10 +135,14 @@ func (cp* ClientProtocol) sendBets(conn net.Conn, maxBatchSize int) (error, int)
 	batch := make([]BetInfo, 0, maxBatchSize)
 	betCount := 0
 	for {
-		bet, err := readBet(reader, cp.id)
+		line, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			return err, -1
 		}
+		bet := parseLine(line, cp.id)
 		batch = append(batch, bet)
 		if len(batch) == maxBatchSize {
 			err := cp.sendBatch(cp.conn, batch, betCount)
