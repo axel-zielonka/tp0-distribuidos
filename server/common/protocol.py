@@ -9,16 +9,20 @@ class Protocol:
     def __init__(self, sock):
         self._sock = sock
 
+    def recvAll(self, size):
+        message = b""
+        while len(message) < size:
+            read = self._sock.recv(size - len(message))
+            if not read:
+                raise ConnectionError("Socket connection closed")
+            message += read
+        return message
+
     # handles meesage receiving through the socket, avoiding short-reads
     def receive_message(self) -> str:
-        msgSize = int.from_bytes(self._sock.recv(2), byteorder='big')        
+        msgSize = int.from_bytes(self.recvAll(2), byteorder='big')        
         
-        message = b""
-        while len(message) < msgSize:
-            chunk = self._sock.recv(msgSize - len(message))
-            if not chunk:
-                raise ConnectionError("Socket connection closed")
-            message += chunk
+        message = self.recvAll(msgSize)
         return message.decode("utf-8")
 
     # receives a string message and sends it through the socket, avoiding short writes
@@ -55,13 +59,12 @@ class Protocol:
     # reads the socket for the total amount of bets expected and then reads chunks until there are 
     # no more things to read. If bets_read == bet_count then it returns the Bet list, if not it returns None
     def receive_bets(self):
-        bet_count = int.from_bytes(self._sock.recv(2), byteorder='big')
         bets_read = 0
         bets = []
         finished = False
         try:
             while not finished:
-                bets, finished = self.parse_bets(bets, bet_count)
+                bets, finished = self.parse_bets(bets, bets_read)
                 bets_read = len(bets)
         except OSError as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")

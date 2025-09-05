@@ -6,6 +6,9 @@ import (
 	"strings"
 	"encoding/binary"
 	"strconv"
+	"encoding/csv"
+	"os"
+	"io"
 
 	"github.com/op/go-logging"
 )
@@ -109,33 +112,71 @@ func (cp *ClientProtocol) receiveMessage() (string, error) {
 	}
 }
 
-// sendBets first sends the total amount of bets, and then sends the bets in totalBets/maxBatchSize chunks.
-func (cp* ClientProtocol) sendBets(conn net.Conn, bets []BetInfo, maxBatchSize int) error {
-	totalBets := len(bets)
-	totalSize := uint16(totalBets)
-
-	betSizeBuf := make([]byte, 2)
-	binary.BigEndian.PutUint16(betSizeBuf, totalSize)
-
-	if err := cp.sendAll(cp.conn, betSizeBuf); err != nil {
-		return fmt.Errorf("Error while sending betCount")
+func parseLine(line []string, id string) BetInfo {
+	return BetInfo{
+		Agency:    id,
+		Name:      line[0],
+		Surname:   line[1],
+		Document:  line[2],
+		Birthdate: line[3],
+		Number:    line[4],
 	}
-	betCount := 0
-	for start := 0; start < len(bets); start += maxBatchSize {
-		end := start + maxBatchSize
-		if end > len(bets) {
-			end = len(bets)
+}
+
+func readBet(reader *Reader, id string) (BetInfo, error) {
+	line, err := reader.Read()
+		if err == io.EOF {
+			return nil, nil
 		}
-
-		currentBatch := bets[start:end]
-		betCount += len(currentBatch)
-
-		err := cp.sendBatch(cp.conn, currentBatch, betCount)
 		if err != nil {
-			return err
+			return nil, err
+		}
+		bet := parseLine(line, id)
+		return bet, nil
+}
+
+// sendBets first sends the total amount of bets, and then sends the bets in totalBets/maxBatchSize chunks.
+func (cp* ClientProtocol) sendBets(conn net.Conn, maxBatchSize int) (error, int) {
+	f, err := os.Open("agency.csv")
+	if err != nil {
+		log.Errorf("action: read_bet_file | result: fail | error: %v", err)
+		return err, -1
+	}
+	defer f.Close()
+	reader := csv.NewReader(f)
+	batch := make([]BetInfo, 0, maxBatchSize)
+	betCount := 0
+	for {
+		bet, err := readBet(reader, cp.id)
+		if err != nil {
+			return err, -1
+		}
+		batch = append(batch, bet)
+		if len(batch) == maxBatchSize {
+			err := cp.sendBatch(cp.conn, batch, betCount)
+			if err != nil {
+				return err, -1
+			}
+			batch = batch[:0] 
+		}
+		betCount += 1
+	}
+	if len(batch) > 0 {
+		err := cp.sendBatch(cp.conn, batch, betCount)
+		if err != nil {
+			return err, -1
 		}
 	}
-	return nil
+	log.Infof("action: send_bets | result: success")
+	log.Infof("action: finishing_sending_bets | result: in_progress")
+	err = cp.sendMessageType(cp.conn, FINISH_MESSAGE)
+	if err != nil {
+		log.Infof("action: finishing_sending_bets | result: fail | error: %v", err)
+		return err, -1
+	} else {
+		log.Infof("action: finishing_sending_bets | result: success")
+	}
+	return nil, betCount
 }
 
 // sendBatch serializes a chunk of bets and sends it to the server, ensuring no short-writes

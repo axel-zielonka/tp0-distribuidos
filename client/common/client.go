@@ -25,8 +25,8 @@ type ClientConfig struct {
 type Client struct {
 	config  	ClientConfig
 	conn    	net.Conn
-	bets 		[]BetInfo
 	protocol 	ClientProtocol
+	betCount 	int
 }
 
 // NewClient Initializes a new client receiving the configuration
@@ -36,13 +36,7 @@ func NewClient(config ClientConfig) *Client {
 		config: config,
 	}
 
-	bets, err := loadBetsFromFile(client.config.ID)
-
-	if err != nil {
-		log.Criticalf("action: load_bet_data | result: fail | client_id: %v | error: %v", config.ID, err)
-	}
-
-	client.bets = bets
+	client.betCount = 0
 
 	return client
 }
@@ -85,24 +79,11 @@ func (c *Client) StartClientLoop(ctx context.Context) {
 		log.Infof("action: start_sending_bets | result: success")
 	}
 
-	err = c.protocol.sendBets(c.conn, c.bets, c.config.MaxBatchSize)
+	err, c.betCount = c.protocol.sendBets(c.conn, c.config.MaxBatchSize)
 	if err != nil {
 		log.Infof("action: send_bets | result: fail | error: %v", err)
 		c.closeConnection()
 		return
-	}
-
-	log.Infof("action: send_bets | result: success")
-
-	log.Infof("action: finishing_sending_bets | result: in_progress")
-
-	err = c.protocol.sendMessageType(c.conn, FINISH_MESSAGE)
-	if err != nil {
-		log.Infof("action: finishing_sending_bets | result: fail | error: %v", err)
-		c.closeConnection()
-		return
-	} else {
-		log.Infof("action: finishing_sending_bets | result: success")
 	}
 
 	serverResponse, err := c.protocol.receiveMessage()
@@ -150,7 +131,7 @@ func (c *Client) StartClientLoop(ctx context.Context) {
 }
 
 func (c *Client) handleServerResponse(response *ServerResponse) {
-	if response.betCount != len(c.bets) {
+	if response.betCount != c.betCount {
 		log.Infof("action: apuesta_almacenada | result: fail | cantidad: %d | error: %v", response.betCount, response.Message)
 	} else {
 		log.Infof("action: apuesta_almacenada | result: success | cantidad: %d", response.betCount)

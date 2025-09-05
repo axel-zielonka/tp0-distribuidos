@@ -229,3 +229,17 @@ Para resolver el problema del paralelismo, recurrí a utilizar _threads_ con _lo
 Se provee una captura de pantalla mostrando que el código pasa todas las pruebas provistas por la cátedra
 
 ![tests](img/tests.png)
+
+
+### CORRECCIONES
+Se realizaron las correcciones pedidas en la defensa del tp:
+* Ya no se carga todo el archivo de apuestas en memoria, sino que se lee por líneas y se envía por batches. Tampoco se envía más la cantidad de apuestas ya que al no leer todo el archivo no es un valor que se conoce. 
+
+![correccion1](img/correccion_img1.png)
+![correccion1](img/correccion_img2.png)
+![correccion1](img/correccion_img3.png)
+
+* En el servidor ya no se intenta leer para obtener la cantidad total de apuestas, porque no es un dato que se envíe. Además, se implementó la función `recvAll` para realmente manejar los casos de short-reads.
+
+![correccion1](img/correccion_img4.png)
+![correccion1](img/correccion_img5.png)
